@@ -12,6 +12,13 @@ import telegram_media_downloader as downloader
 
 
 class ParsePostUrlTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.original_language = downloader.LANGUAGE
+        downloader.LANGUAGE = "zh"
+
+    def tearDown(self) -> None:
+        downloader.LANGUAGE = self.original_language
+
     def test_public_post(self) -> None:
         post = downloader.parse_post_url(
             "https://t.me/ExampleChannel/37?single"
@@ -48,6 +55,37 @@ class ParsePostUrlTests(unittest.TestCase):
             downloader.parse_post_url(
                 "https://t.me/ExampleChannel/37?comment=hello"
             )
+
+
+class LanguageTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.original_language = downloader.LANGUAGE
+
+    def tearDown(self) -> None:
+        downloader.LANGUAGE = self.original_language
+
+    def test_requested_language_from_cli(self) -> None:
+        self.assertEqual(
+            downloader.requested_language(["--lang", "en"]),
+            "en",
+        )
+        self.assertEqual(
+            downloader.requested_language(["--lang=zh"]),
+            "zh",
+        )
+
+    def test_english_validation_message(self) -> None:
+        downloader.LANGUAGE = "en"
+        with self.assertRaisesRegex(ValueError, "Only t.me"):
+            downloader.parse_post_url(
+                "https://example.com/ExampleChannel/37"
+            )
+
+    def test_english_help(self) -> None:
+        downloader.LANGUAGE = "en"
+        help_text = downloader.build_parser().format_help()
+        self.assertIn("Interface language", help_text)
+        self.assertIn("Download folder", help_text)
 
 
 if __name__ == "__main__":

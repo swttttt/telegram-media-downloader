@@ -1,3 +1,7 @@
+<p align="center">
+  <strong>简体中文</strong> · <a href="README_EN.md">English</a>
+</p>
+
 <div align="center">
   <img src="assets/logo.svg" width="112" alt="Telegram Media Downloader logo">
   <h1>Telegram Media Downloader</h1>
@@ -68,6 +72,14 @@ python telegram_media_downloader.py
 
 随后粘贴 Telegram 帖子链接即可。下载结果默认保存在程序同目录的 `download` 文件夹。
 
+`start.bat` 启动时可选择中文或 English。也可以直接启动英文界面：
+
+```powershell
+python telegram_media_downloader.py --lang en
+```
+
+如需永久使用英文，可设置环境变量 `TMD_LANG=en`。
+
 > 首次运行需要输入自己的 `API_ID` 和 `API_HASH`。请前往 [my.telegram.org](https://my.telegram.org) → **API development tools** 创建；输入一次后会安全保存。
 
 ## 支持的链接
@@ -120,6 +132,7 @@ python telegram_media_downloader.py --forget-credentials
 | `-j, --jobs` | 并发下载数，范围 1–8 | `3` |
 | `--retries` | 网络失败重试次数，范围 0–10 | `5` |
 | `--forget-credentials` | 删除 Windows 凭据管理器中的 API 凭据 | — |
+| `--lang` | 界面语言：`zh` 或 `en` | `zh` |
 
 ## 稳定性设计
 
@@ -137,6 +150,7 @@ telegram-media-downloader/
 ├─ assets/                       # README 品牌与界面预览
 ├─ telegram_media_downloader.py  # 主程序
 ├─ start.bat                     # Windows 一键启动
+├─ README_EN.md                  # English documentation
 ├─ requirements.txt              # Python 依赖
 ├─ LICENSE                       # MIT License
 └─ download/                     # 本地下载目录（不会提交）
