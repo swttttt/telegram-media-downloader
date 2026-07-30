@@ -29,17 +29,16 @@
     <text x="128" y="198" fill="#F8FAFC" font-size="20" font-weight="700">原画质媒体下载器</text>
     <text x="128" y="262" fill="#94A3B8" font-size="18">整组识别  ·  并发下载  ·  智能重试</text>
 
-    <text x="100" y="342" fill="#22D3EE" font-size="19">❯</text>
-    <text x="130" y="342" fill="#CBD5E1" font-size="19">粘贴 Telegram 帖子链接：</text>
-    <text x="406" y="342" fill="#F8FAFC" font-size="19">https://t.me/channel/128?single</text>
+    <text x="100" y="342" fill="#34D399" font-size="20">✓</text>
+    <text x="132" y="342" fill="#CBD5E1" font-size="19">Telegram 媒体链接已安全读取</text>
     <text x="100" y="382" fill="#34D399" font-size="20">✓</text>
     <text x="132" y="382" fill="#CBD5E1" font-size="19">Telegram 登录成功</text>
 
     <rect x="100" y="408" width="570" height="132" rx="12" fill="#0B1220" stroke="#22D3EE" stroke-width="2"/>
-    <rect x="120" y="394" width="186" height="30" rx="15" fill="#070B14"/>
-    <text x="132" y="416" fill="#F8FAFC" font-size="19" font-weight="700">找到完整媒体组</text>
-    <text x="130" y="464" fill="#CBD5E1" font-size="18">来源  </text>
-    <text x="204" y="464" fill="#F8FAFC" font-size="18" font-weight="700">@channel · 帖子 #128</text>
+    <rect x="120" y="394" width="168" height="30" rx="15" fill="#070B14"/>
+    <text x="132" y="416" fill="#F8FAFC" font-size="19" font-weight="700">媒体解析完成</text>
+    <text x="130" y="464" fill="#CBD5E1" font-size="18">状态  </text>
+    <text x="204" y="464" fill="#F8FAFC" font-size="18" font-weight="700">已识别原画质媒体</text>
     <text x="130" y="498" fill="#CBD5E1" font-size="18">数量  </text>
     <text x="204" y="498" fill="#F8FAFC" font-size="18" font-weight="700">8 项</text>
     <text x="258" y="498" fill="#94A3B8" font-size="18">（图片 6，视频 2）</text>
