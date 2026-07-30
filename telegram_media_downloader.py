@@ -15,7 +15,7 @@ r"""
     TELEGRAM_API_ID
     TELEGRAM_API_HASH
 
-若环境变量不存在，首次运行会询问并安全保存到 Windows 凭据管理器。
+若环境变量不存在，首次运行会询问并安全保存到系统凭据存储。
 登录成功后，Telegram 登录会话保存在脚本目录的
 telegram_media.session 中，后续不需要重复输入手机号和验证码。
 
@@ -33,7 +33,9 @@ import mimetypes
 import os
 import random
 import re
+import shutil
 import sqlite3
+import subprocess
 import sys
 import time
 import unicodedata
@@ -41,10 +43,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
-from ctypes import wintypes
+if os.name == "nt":
+    from ctypes import wintypes
 
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 def application_dir() -> Path:
@@ -110,27 +113,32 @@ SUPPORTED_HOSTS = {
     "www.telegram.dog",
 }
 SAFE_NAME_RE = re.compile(r"[^0-9A-Za-z._-]+")
-WINDOWS_CREDENTIAL_TARGET = "TelegramMediaDownloader.API"
+CREDENTIAL_SERVICE = "TelegramMediaDownloader.API"
+CREDENTIAL_ACCOUNT = "api"
+WINDOWS_CREDENTIAL_TARGET = CREDENTIAL_SERVICE
 ERROR_NOT_FOUND = 1168
 CRED_TYPE_GENERIC = 1
 CRED_PERSIST_LOCAL_MACHINE = 2
 
 
-class WindowsCredential(ctypes.Structure):
-    _fields_ = [
-        ("Flags", wintypes.DWORD),
-        ("Type", wintypes.DWORD),
-        ("TargetName", wintypes.LPWSTR),
-        ("Comment", wintypes.LPWSTR),
-        ("LastWritten", wintypes.FILETIME),
-        ("CredentialBlobSize", wintypes.DWORD),
-        ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
-        ("Persist", wintypes.DWORD),
-        ("AttributeCount", wintypes.DWORD),
-        ("Attributes", ctypes.c_void_p),
-        ("TargetAlias", wintypes.LPWSTR),
-        ("UserName", wintypes.LPWSTR),
-    ]
+if os.name == "nt":
+    class WindowsCredential(ctypes.Structure):
+        _fields_ = [
+            ("Flags", wintypes.DWORD),
+            ("Type", wintypes.DWORD),
+            ("TargetName", wintypes.LPWSTR),
+            ("Comment", wintypes.LPWSTR),
+            ("LastWritten", wintypes.FILETIME),
+            ("CredentialBlobSize", wintypes.DWORD),
+            ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
+            ("Persist", wintypes.DWORD),
+            ("AttributeCount", wintypes.DWORD),
+            ("Attributes", ctypes.c_void_p),
+            ("TargetAlias", wintypes.LPWSTR),
+            ("UserName", wintypes.LPWSTR),
+        ]
+else:
+    WindowsCredential = None
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
@@ -495,7 +503,7 @@ def windows_credential_api():
     return advapi32
 
 
-def load_saved_api_credentials() -> tuple[str, str] | None:
+def _load_windows_credentials() -> tuple[str, str] | None:
     """从 Windows Credential Manager 读取 API_ID/API_HASH。"""
     advapi32 = windows_credential_api()
     if advapi32 is None:
@@ -526,7 +534,7 @@ def load_saved_api_credentials() -> tuple[str, str] | None:
         advapi32.CredFree(credential_pointer)
 
 
-def save_api_credentials(api_id: int, api_hash: str) -> None:
+def _save_windows_credentials(api_id: int, api_hash: str) -> None:
     """把 API 凭据写入当前 Windows 用户的 Credential Manager。"""
     advapi32 = windows_credential_api()
     if advapi32 is None:
@@ -554,7 +562,7 @@ def save_api_credentials(api_id: int, api_hash: str) -> None:
         raise ctypes.WinError(ctypes.get_last_error())
 
 
-def delete_saved_api_credentials() -> bool:
+def _delete_windows_credentials() -> bool:
     """删除本下载器保存在 Windows Credential Manager 中的 API 凭据。"""
     advapi32 = windows_credential_api()
     if advapi32 is None:
@@ -572,6 +580,201 @@ def delete_saved_api_credentials() -> bool:
     raise ctypes.WinError(error)
 
 
+def _credential_payload(api_id: int | str, api_hash: str) -> str:
+    return f"{api_id}:{api_hash}"
+
+
+def _parse_credential_payload(payload: str) -> tuple[str, str] | None:
+    api_id, separator, api_hash = payload.strip().partition(":")
+    if not separator or not api_id or not api_hash:
+        return None
+    return api_id, api_hash
+
+
+def _run_credential_command(
+    command: list[str],
+    *,
+    input_text: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            command,
+            input=input_text,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError as exc:
+        raise OSError(f"{command[0]}: {exc}") from exc
+
+
+def _command_error(result: subprocess.CompletedProcess[str]) -> OSError:
+    detail = (result.stderr or result.stdout or "").strip()
+    return OSError(detail or f"credential command exited with code {result.returncode}")
+
+
+def _macos_keychain_command() -> str | None:
+    if sys.platform != "darwin":
+        return None
+    return shutil.which("security") or (
+        "/usr/bin/security" if Path("/usr/bin/security").exists() else None
+    )
+
+
+def _linux_secret_tool() -> str | None:
+    if not sys.platform.startswith("linux"):
+        return None
+    return shutil.which("secret-tool")
+
+
+def credential_store_name() -> str | None:
+    """返回当前平台可用的安全凭据存储名称。"""
+    if os.name == "nt":
+        return tr("Windows 凭据管理器", "Windows Credential Manager")
+    if _macos_keychain_command():
+        return tr("macOS 钥匙串", "macOS Keychain")
+    if _linux_secret_tool():
+        return tr("Linux Secret Service 密钥环", "Linux Secret Service keyring")
+    return None
+
+
+def load_saved_api_credentials() -> tuple[str, str] | None:
+    """从当前操作系统的安全凭据存储读取 API_ID/API_HASH。"""
+    if os.name == "nt":
+        return _load_windows_credentials()
+
+    security = _macos_keychain_command()
+    if security:
+        result = _run_credential_command(
+            [
+                security,
+                "find-generic-password",
+                "-s",
+                CREDENTIAL_SERVICE,
+                "-a",
+                CREDENTIAL_ACCOUNT,
+                "-w",
+            ]
+        )
+        if result.returncode == 0:
+            return _parse_credential_payload(result.stdout)
+        if result.returncode == 44 or "could not be found" in result.stderr.lower():
+            return None
+        raise _command_error(result)
+
+    secret_tool = _linux_secret_tool()
+    if secret_tool:
+        result = _run_credential_command(
+            [
+                secret_tool,
+                "lookup",
+                "application",
+                CREDENTIAL_SERVICE,
+                "account",
+                CREDENTIAL_ACCOUNT,
+            ]
+        )
+        if result.returncode != 0:
+            raise _command_error(result)
+        if not result.stdout.strip():
+            return None
+        return _parse_credential_payload(result.stdout)
+
+    return None
+
+
+def save_api_credentials(api_id: int, api_hash: str) -> bool:
+    """安全保存 API 凭据；没有支持的系统存储时返回 False。"""
+    if os.name == "nt":
+        _save_windows_credentials(api_id, api_hash)
+        return True
+
+    payload = _credential_payload(api_id, api_hash)
+    security = _macos_keychain_command()
+    if security:
+        result = _run_credential_command(
+            [
+                security,
+                "add-generic-password",
+                "-U",
+                "-s",
+                CREDENTIAL_SERVICE,
+                "-a",
+                CREDENTIAL_ACCOUNT,
+                "-w",
+                payload,
+            ]
+        )
+        if result.returncode != 0:
+            raise _command_error(result)
+        return True
+
+    secret_tool = _linux_secret_tool()
+    if secret_tool:
+        result = _run_credential_command(
+            [
+                secret_tool,
+                "store",
+                f"--label={CREDENTIAL_SERVICE}",
+                "application",
+                CREDENTIAL_SERVICE,
+                "account",
+                CREDENTIAL_ACCOUNT,
+            ],
+            input_text=payload,
+        )
+        if result.returncode != 0:
+            raise _command_error(result)
+        return True
+
+    return False
+
+
+def delete_saved_api_credentials() -> bool:
+    """从当前操作系统的安全凭据存储删除 API 凭据。"""
+    if os.name == "nt":
+        return _delete_windows_credentials()
+
+    security = _macos_keychain_command()
+    if security:
+        result = _run_credential_command(
+            [
+                security,
+                "delete-generic-password",
+                "-s",
+                CREDENTIAL_SERVICE,
+                "-a",
+                CREDENTIAL_ACCOUNT,
+            ]
+        )
+        if result.returncode == 0:
+            return True
+        if result.returncode == 44 or "could not be found" in result.stderr.lower():
+            return False
+        raise _command_error(result)
+
+    secret_tool = _linux_secret_tool()
+    if secret_tool:
+        saved = load_saved_api_credentials()
+        if saved is None:
+            return False
+        result = _run_credential_command(
+            [
+                secret_tool,
+                "clear",
+                "application",
+                CREDENTIAL_SERVICE,
+                "account",
+                CREDENTIAL_ACCOUNT,
+            ]
+        )
+        if result.returncode != 0:
+            raise _command_error(result)
+        return True
+
+    return False
+
+
 def read_api_credentials() -> tuple[int, str]:
     raw_id = os.getenv("TELEGRAM_API_ID") or os.getenv("TG_API_ID")
     api_hash = os.getenv("TELEGRAM_API_HASH") or os.getenv("TG_API_HASH")
@@ -585,24 +788,36 @@ def read_api_credentials() -> tuple[int, str]:
             print(
                 icon_retry(
                     tr(
-                        f"读取 Windows 凭据失败，将重新询问：{exc}",
-                        f"Could not read Windows credentials; asking again: {exc}",
+                        f"读取系统凭据失败，将重新询问：{exc}",
+                        f"Could not read system credentials; asking again: {exc}",
                     )
                 )
             )
         if saved is not None:
             raw_id, api_hash = saved
+            store_name = credential_store_name() or tr("系统凭据存储", "system credential store")
             print(
                 icon_done(
                     tr(
-                        "已从 Windows 凭据管理器读取 API 凭据",
-                        "API credentials loaded from Windows Credential Manager",
+                        f"已从{store_name}读取 API 凭据",
+                        f"API credentials loaded from {store_name}",
                     )
                 )
             )
 
     if not raw_id or not api_hash:
         print()
+        store_name = credential_store_name()
+        if store_name:
+            storage_message = tr(
+                f"凭据将安全保存到{store_name}，不会写入脚本。",
+                f"Credentials are stored securely in {store_name}, never in the script.",
+            )
+        else:
+            storage_message = tr(
+                "未检测到安全凭据存储，本次不会把凭据写入磁盘。Linux 可安装 secret-tool，或使用 TELEGRAM_API_ID / TELEGRAM_API_HASH 环境变量。",
+                "No secure credential store was detected, so credentials will not be written to disk. On Linux, install secret-tool or use TELEGRAM_API_ID / TELEGRAM_API_HASH.",
+            )
         print_panel(
             tr("首次设置", "First-time setup"),
             [
@@ -613,9 +828,7 @@ def read_api_credentials() -> tuple[int, str]:
                 tr("获取地址：", "Get them at: ")
                 + f"{P.bright_cyan}https://my.telegram.org{P.reset}"
                 " → API development tools",
-                f"{P.dim}"
-                f"{tr('凭据将安全保存到 Windows 凭据管理器，不会写入脚本。', 'Credentials are stored securely in Windows Credential Manager, never in the script.')}"
-                f"{P.reset}",
+                f"{P.dim}{storage_message}{P.reset}",
             ],
             P.yellow,
         )
@@ -648,21 +861,31 @@ def read_api_credentials() -> tuple[int, str]:
 
     if prompted:
         try:
-            save_api_credentials(api_id, api_hash)
-            print(
-                icon_done(
-                    tr(
-                        "API 凭据已安全保存，后续启动无需重复输入",
-                        "API credentials saved securely; you will not be asked again",
+            saved = save_api_credentials(api_id, api_hash)
+            if saved:
+                print(
+                    icon_done(
+                        tr(
+                            "API 凭据已安全保存，后续启动无需重复输入",
+                            "API credentials saved securely; you will not be asked again",
+                        )
                     )
                 )
-            )
+            else:
+                print(
+                    icon_skip(
+                        tr(
+                            "未找到可用的安全凭据存储，API 凭据仅用于本次运行",
+                            "No secure credential store is available; API credentials are used for this run only",
+                        )
+                    )
+                )
         except OSError as exc:
             print(
                 icon_retry(
                     tr(
-                        f"保存到 Windows 凭据管理器失败：{exc}",
-                        f"Could not save to Windows Credential Manager: {exc}",
+                        f"保存到系统凭据存储失败：{exc}",
+                        f"Could not save to the system credential store: {exc}",
                     )
                 )
             )
@@ -1157,8 +1380,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--forget-credentials",
         action="store_true",
         help=tr(
-            "删除保存在 Windows 凭据管理器中的 API_ID/API_HASH 后退出",
-            "Delete API_ID/API_HASH from Windows Credential Manager and exit",
+            "从系统安全凭据存储删除 API_ID/API_HASH 后退出",
+            "Delete API_ID/API_HASH from the system credential store and exit",
         ),
     )
     parser.add_argument(
@@ -1187,8 +1410,8 @@ async def run_downloader(args: argparse.Namespace) -> int:
             print(
                 icon_error(
                     tr(
-                        f"删除 Windows 凭据失败：{exc}",
-                        f"Could not delete Windows credentials: {exc}",
+                        f"删除系统凭据失败：{exc}",
+                        f"Could not delete system credentials: {exc}",
                     )
                 ),
                 file=sys.stderr,

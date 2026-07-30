@@ -9,7 +9,7 @@
   <p>支持整组相册、单视频和评论区媒体；无需配置文件，并发下载、智能重试与完整性校验全部内置。</p>
 
   <p>
-    <a href="https://github.com/swttttt/telegram-media-downloader/releases/latest"><img alt="下载 Windows 版" src="https://img.shields.io/badge/下载-Windows_免安装版-22C55E?style=for-the-badge&logo=windows&logoColor=white"></a>
+    <a href="https://github.com/swttttt/telegram-media-downloader/releases/latest"><img alt="下载跨平台版本" src="https://img.shields.io/badge/下载-Windows_%7C_Linux_%7C_macOS-22C55E?style=for-the-badge"></a>
     <a href="https://github.com/swttttt/telegram-media-downloader/actions/workflows/ci.yml"><img alt="Quality checks" src="https://img.shields.io/github/actions/workflow/status/swttttt/telegram-media-downloader/ci.yml?branch=main&style=for-the-badge&label=checks"></a>
     <a href="https://github.com/swttttt/telegram-media-downloader/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/swttttt/telegram-media-downloader?style=for-the-badge&logo=github&color=FBBF24"></a>
     <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge">
@@ -17,7 +17,7 @@
 </div>
 
 <div align="center">
-  <a href="https://github.com/swttttt/telegram-media-downloader/releases/latest"><strong>⬇️ 下载最新版 Windows 免安装包</strong></a>
+  <a href="https://github.com/swttttt/telegram-media-downloader/releases/latest"><strong>⬇️ 下载 Windows / Linux / macOS 免安装包</strong></a>
 </div>
 
 <br>
@@ -37,20 +37,42 @@ Telegram 网页端保存相册时，常常需要逐项点击，评论区媒体�
 | 一个链接下载完整相册 | ✅ | ❌ | 视脚本而定 |
 | 评论区 `?comment=` 媒体 | ✅ | 手动查找 | 很少支持 |
 | Telegram 提供的原始质量 | ✅ | 不稳定 | 视脚本而定 |
-| Windows 免安装 EXE | ✅ | — | 通常需要 Python |
+| Windows / Linux / macOS 原生程序 | ✅ | — | 通常需要 Python |
 | 中文 / English | ✅ | — | 通常单语言 |
-| Windows 凭据管理器 | ✅ | — | 通常明文配置 |
+| 系统密钥环安全保存凭据 | ✅ | — | 通常明文配置 |
 | 并发、重试、完整性校验 | ✅ | ❌ | 视脚本而定 |
 
-## 最快开始：Windows 免安装版
+## 最快开始：免安装版
 
-1. 打开 [Releases](https://github.com/swttttt/telegram-media-downloader/releases/latest)，下载 `TelegramMediaDownloader-v*-windows-x64.zip`。
-2. 解压后双击 `start.bat`，选择简体中文或 English。
-3. 粘贴 Telegram 帖子链接并回车。媒体默认保存到程序旁边的 `download` 文件夹。
+打开 [Releases](https://github.com/swttttt/telegram-media-downloader/releases/latest)，按系统下载对应压缩包：
 
-也可以直接运行 `TelegramMediaDownloader.exe`，默认使用中文界面。
+| 系统 | 下载文件 | 启动方式 |
+| --- | --- | --- |
+| Windows x64 | `*-windows-x64.zip` | 解压后双击 `start.bat` |
+| Linux x64 | `*-linux-x64.tar.gz` | 解压后运行 `./start.sh` |
+| macOS Apple Silicon | `*-macos-arm64.tar.gz` | 解压后运行 `./start.sh` |
+| macOS Intel | `*-macos-x64.tar.gz` | 解压后运行 `./start.sh` |
 
-> 首次运行需要输入自己的 `API_ID` 和 `API_HASH`。请在 [my.telegram.org](https://my.telegram.org) 的 **API development tools** 页面创建。它们不是账号密码；输入一次后会保存在 Windows 凭据管理器中。
+Linux / macOS 可用下面的命令解压并启动：
+
+```bash
+mkdir TelegramMediaDownloader
+tar -xzf TelegramMediaDownloader-v*-linux-x64.tar.gz -C TelegramMediaDownloader  # macOS 请换成对应文件名
+cd TelegramMediaDownloader
+./start.sh
+```
+
+粘贴 Telegram 帖子链接并回车，媒体默认保存到程序旁边的 `download` 文件夹。
+
+> 首次运行需要输入自己的 `API_ID` 和 `API_HASH`。请在 [my.telegram.org](https://my.telegram.org) 的 **API development tools** 页面创建。它们不是账号密码；程序会使用 Windows 凭据管理器、macOS 钥匙串或 Linux Secret Service 安全保存。
+
+### Linux 密钥环
+
+Linux 版使用 `secret-tool` 对接桌面密钥环。Ubuntu / Debian 可执行 `sudo apt install libsecret-tools`，Fedora 执行 `sudo dnf install libsecret`，Arch Linux 执行 `sudo pacman -S libsecret`。没有可用密钥环时，程序仍可下载，但不会把 API 凭据写入磁盘；也可以设置 `TELEGRAM_API_ID` 和 `TELEGRAM_API_HASH` 环境变量。
+
+### macOS 首次打开
+
+发布包目前未使用 Apple Developer ID 签名。若 macOS 阻止首次运行，请在“系统设置 → 隐私与安全”中确认“仍要打开”，然后重新运行 `./start.sh`。请确认压缩包来自本项目 Releases，并可先核对随包提供的 SHA-256。
 
 ## 支持的链接
 
@@ -72,16 +94,16 @@ https://t.me/c/1234567890/321
 
 ## 从源码运行
 
-需要 Windows 10/11 与 Python 3.10 或更高版本：
+支持 Windows、Linux 与 macOS，需要 Python 3.10 或更高版本：
 
-```powershell
+```bash
 git clone https://github.com/swttttt/telegram-media-downloader.git
 cd telegram-media-downloader
-python -m pip install -r requirements.txt
-python telegram_media_downloader.py
+python3 -m pip install -r requirements.txt
+python3 telegram_media_downloader.py
 ```
 
-双击源码目录中的 `start.bat` 也可以完成依赖检查并选择界面语言。
+Windows 可双击 `start.bat`；Linux / macOS 可运行 `./start.sh`。启动器会检查依赖并让你选择界面语言。
 
 ## 命令行用法
 
@@ -112,7 +134,7 @@ python telegram_media_downloader.py --forget-credentials
 | `--overwrite` | 覆盖已存在的同名文件 | 关闭 |
 | `-j, --jobs` | 并发下载数，范围 1–8 | `3` |
 | `--retries` | 网络失败重试次数，范围 0–10 | `5` |
-| `--forget-credentials` | 删除 Windows 凭据管理器中的 API 凭据 | — |
+| `--forget-credentials` | 删除系统安全凭据存储中的 API 凭据 | — |
 | `--lang` | 界面语言：`zh` 或 `en` | `zh` |
 | `--version` | 显示版本号 | — |
 
@@ -127,7 +149,7 @@ python telegram_media_downloader.py --forget-credentials
 
 ## 隐私与安全
 
-- API 凭据保存在 Windows 凭据管理器，不写入源码或明文配置文件。
+- API 凭据保存在 Windows 凭据管理器、macOS 钥匙串或 Linux Secret Service，不写入源码或明文配置文件。
 - `telegram_media.session`、下载内容、缓存和构建目录均已被 `.gitignore` 排除。
 - 项目发布配图和演示数据全部匿名化，不包含频道、群组、账号、帖子链接或本机路径。
 - 登录会话相当于本机授权，请勿上传或分享。只下载你有权访问与保存的内容。

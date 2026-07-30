@@ -9,8 +9,21 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+          - name: Linux x64
+            os: ubuntu-22.04
+          - name: macOS Apple Silicon
+            os: macos-14
+          - name: macOS Intel
+            os: macos-15-intel
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -24,42 +37,54 @@ jobs:
       - name: Install build dependencies
         run: python -m pip install -r requirements-build.txt
 
-      - name: Build portable package
-        shell: pwsh
-        run: ./build_release.ps1 -SkipInstall
+      - name: Build native portable package
+        run: python tools/build_release.py --skip-assets
 
-      - name: Verify executable
-        shell: pwsh
-        run: |
-          ./dist/TelegramMediaDownloader.exe --version
-          ./dist/TelegramMediaDownloader.exe --lang en --help
-          ./dist/TelegramMediaDownloader.exe --lang zh --help
+      - name: Verify native executable
+        run: python tools/verify_release_binary.py
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.name }}
+          path: |
+            dist/TelegramMediaDownloader-v*
+            dist/TelegramMediaDownloader.exe
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
 
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
-        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "${{ github.ref_name }}"
-          $version = $tag.TrimStart("v")
-          $zip = "./dist/TelegramMediaDownloader-v$version-windows-x64.zip"
-          $checksum = "./dist/TelegramMediaDownloader-v$version-windows-x64.sha256"
-          $notes = @"
-          ## Telegram Media Downloader $tag
+          cat > release-notes.md <<'EOF'
+          ## Telegram Media Downloader ${{ github.ref_name }}
 
-          - Portable Windows executable; no Python installation required
-          - Chinese and English interfaces
-          - Original-quality albums, videos, and discussion media
-          - Parallel downloads, automatic retries, and integrity checks
+          Native portable builds for:
 
-          Download the ZIP, extract it, and run ``TelegramMediaDownloader.exe``.
+          - Windows x64 (`.zip`)
+          - Linux x64 (`.tar.gz`)
+          - macOS Apple Silicon / ARM64 (`.tar.gz`)
+          - macOS Intel / x64 (`.tar.gz`)
 
-          下载 ZIP 并解压，双击 ``start.bat`` 即可选择中文或 English。
-          "@
-          gh release create $tag `
-            --title "Telegram Media Downloader $tag" `
-            --notes $notes `
-            ./dist/TelegramMediaDownloader.exe `
-            $zip `
-            $checksum
+          Each archive includes a bilingual launcher, Chinese and English documentation, and a SHA-256 checksum. No Python installation is required.
+
+          每个压缩包都包含中英双语启动器、双语文档和 SHA-256 校验文件，无需安装 Python。
+          EOF
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "Telegram Media Downloader ${{ github.ref_name }}" \
+            --notes-file release-notes.md \
+            dist/*

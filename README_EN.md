@@ -9,7 +9,7 @@
   <p>Download complete albums, individual videos, and discussion media with no config file, plus built-in parallel downloads, retries, and integrity checks.</p>
 
   <p>
-    <a href="https://github.com/swttttt/telegram-media-downloader/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Portable_Windows-22C55E?style=for-the-badge&logo=windows&logoColor=white"></a>
+    <a href="https://github.com/swttttt/telegram-media-downloader/releases/latest"><img alt="Download cross-platform builds" src="https://img.shields.io/badge/Download-Windows_%7C_Linux_%7C_macOS-22C55E?style=for-the-badge"></a>
     <a href="https://github.com/swttttt/telegram-media-downloader/actions/workflows/ci.yml"><img alt="Quality checks" src="https://img.shields.io/github/actions/workflow/status/swttttt/telegram-media-downloader/ci.yml?branch=main&style=for-the-badge&label=checks"></a>
     <a href="https://github.com/swttttt/telegram-media-downloader/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/swttttt/telegram-media-downloader?style=for-the-badge&logo=github&color=FBBF24"></a>
     <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge">
@@ -17,7 +17,7 @@
 </div>
 
 <div align="center">
-  <a href="https://github.com/swttttt/telegram-media-downloader/releases/latest"><strong>⬇️ Download the latest portable Windows build</strong></a>
+  <a href="https://github.com/swttttt/telegram-media-downloader/releases/latest"><strong>⬇️ Download for Windows, Linux, or macOS</strong></a>
 </div>
 
 <br>
@@ -37,20 +37,42 @@ Saving a Telegram album from the web client often means clicking every item, whi
 | Complete album from one URL | ✅ | ❌ | Varies |
 | Discussion `?comment=` media | ✅ | Manual | Rare |
 | Original files provided by Telegram | ✅ | Inconsistent | Varies |
-| Portable Windows executable | ✅ | — | Usually needs Python |
+| Native Windows / Linux / macOS build | ✅ | — | Usually needs Python |
 | Chinese and English UI | ✅ | — | Usually one language |
-| Windows Credential Manager | ✅ | — | Often plain-text config |
+| Secure OS credential store | ✅ | — | Often plain-text config |
 | Parallelism, retries, integrity checks | ✅ | ❌ | Varies |
 
-## Fastest start: portable Windows build
+## Fastest start: portable builds
 
-1. Open [Releases](https://github.com/swttttt/telegram-media-downloader/releases/latest) and download `TelegramMediaDownloader-v*-windows-x64.zip`.
-2. Extract it, double-click `start.bat`, and select **English**.
-3. Paste a Telegram post URL. Media is saved in the `download` folder beside the program.
+Open [Releases](https://github.com/swttttt/telegram-media-downloader/releases/latest) and choose the archive for your system:
 
-You can also run `TelegramMediaDownloader.exe --lang en` from a terminal.
+| System | Asset | Start |
+| --- | --- | --- |
+| Windows x64 | `*-windows-x64.zip` | Extract and double-click `start.bat` |
+| Linux x64 | `*-linux-x64.tar.gz` | Extract and run `./start.sh` |
+| macOS Apple Silicon | `*-macos-arm64.tar.gz` | Extract and run `./start.sh` |
+| macOS Intel | `*-macos-x64.tar.gz` | Extract and run `./start.sh` |
 
-> The first run asks for your own `API_ID` and `API_HASH`. Create them under **API development tools** at [my.telegram.org](https://my.telegram.org). They are not your account password and are saved in Windows Credential Manager after the first entry.
+On Linux or macOS:
+
+```bash
+mkdir TelegramMediaDownloader
+tar -xzf TelegramMediaDownloader-v*-linux-x64.tar.gz -C TelegramMediaDownloader  # use the matching macOS name when applicable
+cd TelegramMediaDownloader
+./start.sh
+```
+
+Paste a Telegram post URL. Media is saved in the `download` folder beside the program.
+
+> The first run asks for your own `API_ID` and `API_HASH`. Create them under **API development tools** at [my.telegram.org](https://my.telegram.org). They are not your account password. The app stores them in Windows Credential Manager, macOS Keychain, or Linux Secret Service.
+
+### Linux keyring
+
+The Linux build uses `secret-tool` to access the desktop keyring. Install it with `sudo apt install libsecret-tools` on Ubuntu / Debian, `sudo dnf install libsecret` on Fedora, or `sudo pacman -S libsecret` on Arch Linux. Without a usable keyring the downloader still works, but it will not write API credentials to disk. You can also provide `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` as environment variables.
+
+### First launch on macOS
+
+The release is not currently signed with an Apple Developer ID. If macOS blocks the first launch, approve **Open Anyway** under **System Settings → Privacy & Security**, then run `./start.sh` again. Confirm that the archive came from this project’s Releases page and optionally verify its included SHA-256 checksum first.
 
 ## Supported URLs
 
@@ -72,16 +94,16 @@ The downloader detects the complete media group and generates collision-resistan
 
 ## Run from source
 
-Requires Windows 10/11 and Python 3.10 or newer:
+Windows, Linux, and macOS are supported with Python 3.10 or newer:
 
-```powershell
+```bash
 git clone https://github.com/swttttt/telegram-media-downloader.git
 cd telegram-media-downloader
-python -m pip install -r requirements.txt
-python telegram_media_downloader.py --lang en
+python3 -m pip install -r requirements.txt
+python3 telegram_media_downloader.py --lang en
 ```
 
-You can also double-click `start.bat` in the source folder. It checks dependencies and lets you choose the interface language.
+On Windows, double-click `start.bat`. On Linux or macOS, run `./start.sh`. The launcher checks dependencies and lets you choose the interface language.
 
 ## Command-line usage
 
@@ -109,7 +131,7 @@ python telegram_media_downloader.py --forget-credentials --lang en
 | `--overwrite` | Replace existing same-name files | Off |
 | `-j, --jobs` | Parallel downloads, from 1 to 8 | `3` |
 | `--retries` | Retries after network failures, from 0 to 10 | `5` |
-| `--forget-credentials` | Remove API credentials from Windows Credential Manager | — |
+| `--forget-credentials` | Remove API credentials from the secure OS credential store | — |
 | `--lang` | Interface language: `zh` or `en` | `zh` |
 | `--version` | Print the application version | — |
 
@@ -124,7 +146,7 @@ python telegram_media_downloader.py --forget-credentials --lang en
 
 ## Privacy and security
 
-- API credentials are kept in Windows Credential Manager, not source code or a plain-text config file.
+- API credentials are kept in Windows Credential Manager, macOS Keychain, or Linux Secret Service—not source code or a plain-text config file.
 - Telegram sessions, downloads, caches, and local build folders are excluded by `.gitignore`.
 - Project screenshots and demo data are anonymous and contain no channel, group, account, post URL, or local path.
 - A session file represents local authorization and must never be uploaded or shared. Only download content you have permission to access and save.

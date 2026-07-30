@@ -24,11 +24,13 @@ Run the application with:
 python telegram_media_downloader.py --lang en
 ```
 
-Build the Windows package with:
+Build the native package for your current operating system with:
 
-```powershell
-.\build_release.ps1
+```bash
+python tools/build_release.py
 ```
+
+On Windows, `.\build_release.ps1` remains available as a convenience wrapper.
 
 ## Pull requests
 

@@ -13,5 +13,5 @@ Include the affected version, impact, reproduction steps, and a minimal anonymiz
 ## Local secrets
 
 - `telegram_media.session` grants access through the signed-in Telegram session and must never be shared.
-- API credentials are stored in Windows Credential Manager.
+- API credentials are stored in Windows Credential Manager, macOS Keychain, or Linux Secret Service. The application never falls back to a plain-text credential file.
 - The repository ignores sessions, downloads, temporary files, local environments, and build output by default.

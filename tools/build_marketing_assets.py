@@ -148,7 +148,7 @@ def build_social_preview() -> None:
     draw.text((1090, 510), "73%", font=font(24, bold=True, mono=True), fill=WHITE)
     draw.text(
         (96, 575),
-        "Windows portable  •  中文 / English  •  Open source",
+        "Windows  •  Linux  •  macOS  •  中文 / English",
         font=font(20, bold=True),
         fill=MUTED,
     )
