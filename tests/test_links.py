@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -86,6 +87,20 @@ class LanguageTests(unittest.TestCase):
         help_text = downloader.build_parser().format_help()
         self.assertIn("Interface language", help_text)
         self.assertIn("Download folder", help_text)
+
+    def test_version_is_exposed(self) -> None:
+        self.assertRegex(downloader.__version__, r"^\d+\.\d+\.\d+$")
+
+    def test_frozen_application_dir_is_beside_executable(self) -> None:
+        executable = r"C:\Portable\TelegramMediaDownloader.exe"
+        with (
+            patch.object(sys, "frozen", True, create=True),
+            patch.object(sys, "executable", executable),
+        ):
+            self.assertEqual(
+                downloader.application_dir(),
+                Path(executable).parent,
+            )
 
 
 if __name__ == "__main__":

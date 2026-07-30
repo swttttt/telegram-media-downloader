@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible problem
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Remove all private channel names, usernames, message IDs, phone numbers, local paths, and credentials before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Run TelegramMediaDownloader.exe --version or python telegram_media_downloader.py --version.
+      placeholder: "1.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation
+      options:
+        - Portable Windows release
+        - Python source
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the expected and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Use an anonymous placeholder URL if a URL is relevant.
+      placeholder: |
+        1. Start the downloader
+        2. Paste an anonymized URL
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Anonymized log
+      description: Do not include credentials, session data, phone numbers, private URLs, usernames, or local paths.
+      render: shell
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed all private, account, group, channel, post, and local-machine information.
+          required: true

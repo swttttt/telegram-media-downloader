@@ -24,3 +24,8 @@ download/
 .vscode/
 Thumbs.db
 Desktop.ini
+
+# Local release builds
+build/
+dist/
+*.spec

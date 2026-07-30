@@ -44,7 +44,17 @@ from urllib.parse import parse_qs, unquote, urlparse
 from ctypes import wintypes
 
 
-SCRIPT_DIR = Path(__file__).resolve().parent
+__version__ = "1.1.0"
+
+
+def application_dir() -> Path:
+    """Return the stable folder beside the script or frozen executable."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+SCRIPT_DIR = application_dir()
 VENDOR_DIR = SCRIPT_DIR / "_vendor"
 DEFAULT_DOWNLOAD_DIR = SCRIPT_DIR / "download"
 SESSION_PATH = SCRIPT_DIR / "telegram_media"
@@ -1160,6 +1170,11 @@ def build_parser() -> argparse.ArgumentParser:
             "Interface language: zh or en (default: en for this command)",
         ),
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     return parser
 
 
@@ -1251,7 +1266,7 @@ async def run_downloader(args: argparse.Namespace) -> int:
         api_id,
         api_hash,
         device_model="Telegram Media Downloader",
-        app_version="1.0",
+        app_version=__version__,
         lang_code="en" if LANGUAGE == "en" else "zh-hans",
         system_lang_code="en" if LANGUAGE == "en" else "zh-hans",
         request_retries=5,

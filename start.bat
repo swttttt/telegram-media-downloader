@@ -18,6 +18,13 @@ if "%TMD_LANGUAGE%"=="2" (
 )
 echo.
 
+if exist "TelegramMediaDownloader.exe" (
+    TelegramMediaDownloader.exe --lang %TMD_LANG%
+    echo.
+    pause
+    exit /b %errorlevel%
+)
+
 where python >nul 2>&1
 if errorlevel 1 (
     echo [错误 / Error] 未找到 Python / Python was not found.
